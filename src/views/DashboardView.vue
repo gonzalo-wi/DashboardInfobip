@@ -15,7 +15,7 @@
           modoOscuro ? 'text-white' : 'text-gray-800'
         ]"
       >
-        📊 Dashboard de Atención
+        📊 Dashboard de Atención Conversation
       </span>
       <button
         @click="modoOscuro = !modoOscuro"
@@ -126,17 +126,48 @@
             <div class="relative h-56 flex items-center justify-center">
               <canvas ref="doughnutChart"></canvas>
             </div>
+            <!-- Leyenda profesional de estados -->
+            <div class="flex flex-wrap justify-center gap-4 mt-6">
+              <div
+                v-for="(cantidad, estado) in porEstado"
+                :key="estado"
+                :class="[
+                  'flex flex-col items-center px-4 py-2 min-w-[90px] rounded-lg shadow border transition',
+                  modoOscuro
+                    ? 'bg-gray-800/80 border-gray-600'
+                    : 'bg-white border-gray-200'
+                ]"
+              >
+                <span
+                  :class="[
+                    'text-xs font-semibold uppercase tracking-wide mb-1',
+                    modoOscuro ? 'text-gray-300' : 'text-gray-600'
+                  ]"
+                >
+                  {{ estado }}
+                </span>
+                <span
+                  :class="[
+                    'text-2xl font-extrabold',
+                    modoOscuro ? 'text-white' : 'text-gray-900'
+                  ]"
+                >
+                  {{ cantidad }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Footer profesional -->
+        <footer class="mt-16 mb-4 text-center text-sm opacity-80 select-none">
+          <span :class="modoOscuro ? 'text-gray-400' : 'text-gray-500'">
+            Todos los derechos reservados <strong>IVESS El Jumillano</strong>
+          </span>
+        </footer>
       </div>
-        <<footer class="mt-16 mb-4 text-center text-sm opacity-80 select-none">
-  <span :class="modoOscuro ? 'text-gray-400' : 'text-gray-500'">
-    Todos los derechos reservados <strong>IVESS - El Jumillano</strong>
-  </span>
-</footer>
     </div>
   </div>
-  
 </template>
 
 <script setup>
@@ -159,6 +190,7 @@ const totalAgentes = ref(0)
 const totalAbiertas = ref(0)
 const agentesDemorados = ref([])
 const promedioRespuesta = ref(0)
+const porEstado = ref({})
 
 const agentesDemoradosOrdenados = computed(() =>
   agentesDemorados.value.slice().sort((a, b) => a.minutos - b.minutos)
@@ -222,8 +254,9 @@ async function cargarDashboard() {
   const agentesOrdenados = ordenados.map(i => i[0])
   const cantidadOrdenada = ordenados.map(i => i[1])
 
-  const porEstado = {}
-  filtrados.forEach(i => porEstado[i.status] = (porEstado[i.status] || 0) + 1)
+  // Estados de conversaciones
+  porEstado.value = {}
+  filtrados.forEach(i => porEstado.value[i.status] = (porEstado.value[i.status] || 0) + 1)
 
   const porHora = {}
   for (let h = 0; h < 24; h++) {
@@ -279,8 +312,8 @@ async function cargarDashboard() {
   doughnutInstance = new Chart(doughnutChart.value, {
     type: 'doughnut',
     data: {
-      labels: Object.keys(porEstado),
-      datasets: [{ label: 'Estados', data: Object.values(porEstado), backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)'], borderWidth: 2 }],
+      labels: Object.keys(porEstado.value),
+      datasets: [{ label: 'Estados', data: Object.values(porEstado.value), backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)'], borderWidth: 2 }],
     },
     options: {
       responsive: true,
