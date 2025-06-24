@@ -1,46 +1,48 @@
 <template>
   <div>
-    <!-- Navbar fija arriba -->
+    
     <nav
       :class="[
-        'fixed top-0 left-0 w-full z-10 flex items-center justify-between px-6 py-4 shadow transition-colors',
+        'fixed top-0 left-0 w-full z-10 shadow transition-colors',
         modoOscuro
           ? 'bg-gray-900 border-b border-gray-700'
           : 'bg-white border-b border-gray-200'
       ]"
     >
-      <span
-        :class="[
-          'text-2xl font-extrabold tracking-tight',
-          modoOscuro ? 'text-white' : 'text-gray-800'
-        ]"
-      >
-        📊 Dashboard de Atención Conversation
-      </span>
-      <button
-        @click="modoOscuro = !modoOscuro"
-        class="flex items-center gap-2 px-4 py-2 rounded-lg shadow font-semibold transition border"
-        :class="modoOscuro
-          ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700'
-          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'"
-      >
-        <span v-if="!modoOscuro">🌙</span>
-        <span v-else>☀️</span>
-        {{ modoOscuro ? 'Modo Claro' : 'Modo Oscuro' }}
-      </button>
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-4 gap-2">
+        <span
+          :class="[
+            'text-xl sm:text-2xl font-extrabold tracking-tight text-center sm:text-left w-full',
+            modoOscuro ? 'text-white' : 'text-gray-800'
+          ]"
+        >
+          📊 Dashboard de Conversation
+        </span>
+        <button
+          @click="modoOscuro = !modoOscuro"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg shadow font-semibold transition border w-full sm:w-auto justify-center"
+          :class="modoOscuro
+            ? 'bg-gray-800 text-white border-gray-700 hover:bg-gray-700'
+            : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'"
+        >
+          <span v-if="!modoOscuro">🌙</span>
+          <span v-else>☀️</span>
+          {{ modoOscuro ? 'Modo Claro' : 'Modo Oscuro' }}
+        </button>
+      </div>
     </nav>
 
-    <!-- Dashboard compensando el alto de la navbar -->
+    
     <div
       :class="[
-        'min-h-screen pt-24 px-4 transition-colors',
+        'min-h-screen pt-32 px-4 transition-colors',
         modoOscuro
           ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white'
           : 'bg-gradient-to-br from-slate-100 to-slate-200 text-gray-800'
       ]"
     >
       <div class="max-w-7xl mx-auto">
-        <!-- KPIs -->
+       
         <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
           <div :class="kpiCardClass">
             <p :class="kpiLabelClass">Conversaciones totales</p>
@@ -64,7 +66,7 @@
           </div>
         </div>
 
-        <!-- Indicador de atención -->
+       
         <div
           v-if="agentesDemoradosOrdenados.length"
           :class="[
@@ -104,7 +106,7 @@
           </div>
         </div>
 
-        <!-- Gráficos -->
+        
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div :class="chartCardClass">
             <h2 :class="['text-xl font-semibold mb-2', modoOscuro ? 'text-blue-300' : 'text-blue-700']">Conversaciones por agente</h2>
@@ -126,40 +128,10 @@
             <div class="relative h-56 flex items-center justify-center">
               <canvas ref="doughnutChart"></canvas>
             </div>
-            <!-- Leyenda profesional de estados -->
-            <div class="flex flex-wrap justify-center gap-4 mt-6">
-              <div
-                v-for="(cantidad, estado) in porEstado"
-                :key="estado"
-                :class="[
-                  'flex flex-col items-center px-4 py-2 min-w-[90px] rounded-lg shadow border transition',
-                  modoOscuro
-                    ? 'bg-gray-800/80 border-gray-600'
-                    : 'bg-white border-gray-200'
-                ]"
-              >
-                <span
-                  :class="[
-                    'text-xs font-semibold uppercase tracking-wide mb-1',
-                    modoOscuro ? 'text-gray-300' : 'text-gray-600'
-                  ]"
-                >
-                  {{ estado }}
-                </span>
-                <span
-                  :class="[
-                    'text-2xl font-extrabold',
-                    modoOscuro ? 'text-white' : 'text-gray-900'
-                  ]"
-                >
-                  {{ cantidad }}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
 
-        <!-- Footer profesional -->
+        
         <footer class="mt-16 mb-4 text-center text-sm opacity-80 select-none">
           <span :class="modoOscuro ? 'text-gray-400' : 'text-gray-500'">
             Todos los derechos reservados <strong>IVESS El Jumillano</strong>
@@ -173,7 +145,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import Chart from 'chart.js/auto'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import { getDataConversationPorAgente } from '@/services/infobipService.js'
+
+Chart.register(ChartDataLabels)
 
 const modoOscuro = ref(false)
 
@@ -217,9 +192,30 @@ const chartLabelClass = computed(() =>
     : 'text-xs text-gray-500 mb-4 block'
 )
 
-// Color dinámico para los textos de los gráficos
+
 const chartTextColor = computed(() => (modoOscuro.value ? '#fff' : '#64748b'))
 const chartGridColor = computed(() => (modoOscuro.value ? '#334155' : '#e5e7eb'))
+
+
+const centerText = {
+  id: 'centerText',
+  beforeDraw(chart) {
+    const { width, height, ctx } = chart;
+    ctx.restore();
+    const fontSize = (height / 150).toFixed(2);
+    ctx.font = `${fontSize}em sans-serif`;
+    ctx.textBaseline = 'middle';
+
+    const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+    const text = `Total: ${total}`;
+    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+    const textY = height / 2;
+
+    ctx.fillStyle = chartTextColor.value;
+    ctx.fillText(text, textX, textY);
+    ctx.save();
+  }
+}
 
 async function cargarDashboard() {
   const data = await getDataConversationPorAgente()
@@ -272,22 +268,42 @@ async function cargarDashboard() {
     }
   })
 
+  
   if (barInstance) barInstance.destroy()
   barInstance = new Chart(barChart.value, {
     type: 'bar',
     data: {
       labels: agentesOrdenados,
-      datasets: [{ label: 'Conversaciones', data: cantidadOrdenada, backgroundColor: 'rgba(59, 130, 246, 0.7)', borderRadius: 8, barThickness: 32 }],
+      datasets: [{
+        label: 'Conversaciones',
+        data: cantidadOrdenada,
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        borderRadius: 8,
+        barThickness: 32
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#fff',
+          anchor: 'end',
+          align: 'start',
+          font: {
+            weight: 'bold',
+            size: 16,
+          },
+          formatter: (value) => value,
+        },
+      },
       scales: {
         y: { ticks: { color: chartTextColor.value }, grid: { color: chartGridColor.value } },
         x: { ticks: { color: chartTextColor.value }, grid: { display: false } }
       }
     },
+    plugins: [ChartDataLabels]
   })
 
   if (lineInstance) lineInstance.destroy()
@@ -313,19 +329,45 @@ async function cargarDashboard() {
     type: 'doughnut',
     data: {
       labels: Object.keys(porEstado.value),
-      datasets: [{ label: 'Estados', data: Object.values(porEstado.value), backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(245, 158, 11, 0.7)', 'rgba(239, 68, 68, 0.7)'], borderWidth: 2 }],
+      datasets: [{
+        label: 'Estados',
+        data: Object.values(porEstado.value),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)',   // Azul
+          'rgba(16, 185, 129, 0.7)',   // Verde
+          'rgba(245, 158, 11, 0.7)',   // Amarillo
+          'rgba(239, 68, 68, 0.7)'     // Rojo
+        ],
+        borderWidth: 2,
+      }],
     },
     options: {
       responsive: true,
       cutout: '70%',
       plugins: {
-        legend: { display: true, position: 'bottom', labels: { color: chartTextColor.value, font: { size: 13 } } },
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: chartTextColor.value,
+            font: { size: 13 },
+          },
+        },
+        datalabels: {
+          color: chartTextColor.value,
+          font: {
+            weight: 'bold',
+            size: 14,
+          },
+          formatter: (value) => value,
+        },
       },
     },
+    plugins: [ChartDataLabels, centerText]
   })
 }
 
-// Redibujar los gráficos cuando cambie el modo
+
 watch(modoOscuro, () => {
   cargarDashboard()
 })
