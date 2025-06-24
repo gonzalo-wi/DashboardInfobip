@@ -1,5 +1,30 @@
-# Vue 3 + Vite
+# 📊 Infobip Atención Dashboard
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Este proyecto es un panel de control interactivo desarrollado en **Vue 3 + Tailwind CSS + Chart.js** que consume métricas de atención de la API de **Infobip** y las presenta en tiempo real para facilitar la supervisión del equipo de agentes.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 🚀 Funcionalidades
+
+- Indicadores clave de rendimiento (KPIs):
+  - Total de conversaciones
+  - Agentes únicos
+  - Conversaciones abiertas
+  - Agentes demorados (>5 min)
+  - Tiempo promedio de respuesta
+- Gráficos dinámicos:
+  - Conversaciones por agente (ordenado de mayor a menor)
+  - Conversaciones por hora (actualizadas en vivo)
+  - Estados de conversaciones (dona)
+- Alerta visual de agentes con demoras, con codificación de colores:
+  - Amarillo: demora entre 5 y 10 minutos
+  - Rojo: demora superior a 10 minutos
+- Autoactualización del panel cada 60 segundos
+
+## 🛠️ Tecnologías utilizadas
+
+- [Vue 3](https://vuejs.org/)
+- [Vite](https://vitejs.dev/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Chart.js](https://www.chartjs.org/)
+- [Axios](https://axios-http.com/)
+
+## ⚙️ Instalación
