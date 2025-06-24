@@ -27,4 +27,7 @@ Este proyecto es un panel de control interactivo desarrollado en **Vue 3 + Tailw
 - [Chart.js](https://www.chartjs.org/)
 - [Axios](https://axios-http.com/)
 
-## ⚙️ Instalación
+
+![Captura desde 2025-06-24 13-13-35](https://github.com/user-attachments/assets/8a1c3cf0-ecb8-4865-9467-0befe7b5e0d4)
+
+![Captura desde 2025-06-24 13-13-45](https://github.com/user-attachments/assets/3a1dc1c2-98ca-4a14-939c-f627ea18e18f)
