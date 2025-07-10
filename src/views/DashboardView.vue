@@ -880,7 +880,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import Chart from 'chart.js/auto'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
-import { getDataConversationPorAgente } from '@/services/infobipService.js'
+import { getDataConversationPorAgente,getDataConversationTotalCLosed } from '@/services/infobipService.js'
 
 Chart.register(ChartDataLabels)
 
@@ -904,6 +904,7 @@ let barInstance = null
 let lineInstance = null
 let doughnutInstance = null
 
+const cerradasValidas = ref(0)
 const totalConversaciones = ref(0)
 const totalAgentes = ref(0)
 const totalAbiertas = ref(0)
@@ -975,60 +976,112 @@ const centerText = {
   }
 }
 
+// Calcula todos los tiempos de respuesta de una conversación (en minutos)
+function calcularTiemposRespuestaConversacion(messages, ahora = new Date()) {
+  const tiempos = [];
+  let ultimoInbound = null;
+  messages
+    .slice()
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    .forEach(msg => {
+      if (msg.direction === 'INBOUND') {
+        ultimoInbound = new Date(msg.createdAt);
+      } else if (msg.direction === 'OUTBOUND' && ultimoInbound) {
+        const respuesta = new Date(msg.createdAt);
+        const minutos = (respuesta - ultimoInbound) / 60000;
+        tiempos.push(minutos);
+        ultimoInbound = null;
+      }
+    });
+  if (ultimoInbound) {
+    const minutos = (ahora - ultimoInbound) / 60000;
+    tiempos.push(minutos);
+  }
+  return tiempos;
+}
+
 async function cargarDashboard() {
-  actualizarHora()
-  const data = await getDataConversationPorAgente()
-  const filtrados = data.filter(item => item.agent)
+  actualizarHora();
+  const data = await getDataConversationPorAgente();
+  const dataCerradas = await getDataConversationTotalCLosed();
+  const filtrados = data.filter(item => item.agent);
 
-  totalConversaciones.value = filtrados.length
-  totalAgentes.value = new Set(filtrados.map(i => i.agent.displayName)).size
-  totalAbiertas.value = filtrados.filter(i => i.status === 'OPEN').length
+  cerradasValidas.value = dataCerradas.filter(c => c.agent).length;
+  totalConversaciones.value = filtrados.length + cerradasValidas.value;
+  totalAgentes.value = new Set(filtrados.map(i => i.agent.displayName)).size;
+  totalAbiertas.value = filtrados.filter(i => i.status === 'OPEN').length;
 
-  const tiempos = filtrados
-    .filter(c => c.status === 'CLOSED' && c.createdAt && c.updatedAt)
-    .map(c => (new Date(c.updatedAt) - new Date(c.createdAt)) / 60000)
-  promedioRespuesta.value = tiempos.length ? (tiempos.reduce((a, b) => a + b) / tiempos.length).toFixed(2) : 0
+  // --- Cálculo de tiempos de respuesta por agente y global ---
+  const tiemposPorAgente = {};
+  const ahora = new Date();
 
-  const ahora = new Date()
+  filtrados.forEach(c => {
+    if (!c.agent || !c.messages?.length) return;
+    const tiempos = calcularTiemposRespuestaConversacion(c.messages, ahora);
+    if (!tiemposPorAgente[c.agent.displayName]) tiemposPorAgente[c.agent.displayName] = [];
+    tiemposPorAgente[c.agent.displayName].push(...tiempos);
+  });
+
+  // Promedio global
+  const todosLosTiempos = Object.values(tiemposPorAgente).flat();
+  promedioRespuesta.value = todosLosTiempos.length
+    ? (todosLosTiempos.reduce((a, b) => a + b, 0) / todosLosTiempos.length).toFixed(2)
+    : 0;
+
+  // --- Agentes demorados ---
   const demoras = filtrados.filter(c => {
-    if (c.status !== 'OPEN' || !c.updatedAt) return false
-    const ultima = new Date(c.updatedAt)
-    const diffMin = (ahora - ultima) / 60000
-    return diffMin > 5
-  })
-  agentesDemorados.value = [...new Map(demoras.map(c => [c.agent.displayName, {
-    nombre: c.agent.displayName,
-    minutos: ((new Date() - new Date(c.updatedAt)) / 60000).toFixed(1)
-  }])).values()]
+    if (c.status !== 'OPEN' || !c.messages?.length) return false;
+    const mensajes = c.messages;
+    const inbound = mensajes.filter(m => m.direction === 'INBOUND');
+    const outbound = mensajes.filter(m => m.direction === 'OUTBOUND');
+    if (!inbound.length) return false;
+    const ultimoInbound = new Date(inbound[inbound.length - 1].createdAt);
+    const respuesta = outbound.find(m => new Date(m.createdAt) > ultimoInbound);
+    const respuestaTime = respuesta ? new Date(respuesta.createdAt) : ahora;
+    const diffMin = (respuestaTime - ultimoInbound) / 60000;
+    return diffMin > 5;
+  });
+  agentesDemorados.value = [...new Map(demoras.map(c => {
+    const inbound = c.messages.filter(m => m.direction === 'INBOUND');
+    const ultimoInbound = new Date(inbound[inbound.length - 1].createdAt);
+    const diff = (ahora - ultimoInbound) / 60000;
+    return [c.agent.displayName, {
+      nombre: c.agent.displayName,
+      minutos: diff.toFixed(1)
+    }];
+  })).values()];
 
-  const porAgente = {}
+  // --- Gráficos y métricas ---
+  const porAgente = {};
   filtrados.forEach(i => {
-    porAgente[i.agent.displayName] = (porAgente[i.agent.displayName] || 0) + 1
-  })
-  const ordenados = Object.entries(porAgente).sort((a, b) => b[1] - a[1])
-  const agentesOrdenados = ordenados.map(i => i[0])
-  const cantidadOrdenada = ordenados.map(i => i[1])
+    porAgente[i.agent.displayName] = (porAgente[i.agent.displayName] || 0) + 1;
+  });
+  const ordenados = Object.entries(porAgente).sort((a, b) => b[1] - a[1]);
+  const agentesOrdenados = ordenados.map(i => i[0]);
+  const cantidadOrdenada = ordenados.map(i => i[1]);
 
-  // Estados de conversaciones
-  porEstado.value = {}
-  filtrados.forEach(i => porEstado.value[i.status] = (porEstado.value[i.status] || 0) + 1)
+  // Estados de conversaciones (usando los totales ya calculados)
+  porEstado.value = {
+    OPEN: totalAbiertas.value,
+    CLOSED: cerradasValidas.value
+  };
 
-  const porHora = {}
+  const porHora = {};
   for (let h = 0; h < 24; h++) {
-    const label = `${h.toString().padStart(2, '0')}:00`
-    porHora[label] = 0
+    const label = `${h.toString().padStart(2, '0')}:00`;
+    porHora[label] = 0;
   }
   filtrados.forEach(i => {
-    const f = new Date(i.createdAt)
-    const hoy = new Date().toISOString().slice(0, 10)
+    const f = new Date(i.createdAt);
+    const hoy = new Date().toISOString().slice(0, 10);
     if (i.createdAt.startsWith(hoy)) {
-      const hora = `${f.getHours().toString().padStart(2, '0')}:00`
-      porHora[hora]++
+      const hora = `${f.getHours().toString().padStart(2, '0')}:00`;
+      porHora[hora]++;
     }
-  })
+  });
 
   // Configuración de gráficos mejorada
-  if (barInstance) barInstance.destroy()
+  if (barInstance) barInstance.destroy();
   barInstance = new Chart(barChart.value, {
     type: 'bar',
     data: {
@@ -1170,9 +1223,9 @@ async function cargarDashboard() {
       }
     },
     plugins: [ChartDataLabels]
-  })
+  });
 
-  if (lineInstance) lineInstance.destroy()
+  if (lineInstance) lineInstance.destroy();
   lineInstance = new Chart(lineChart.value, {
     type: 'line',
     data: {
@@ -1275,9 +1328,9 @@ async function cargarDashboard() {
         }
       }
     },
-  })
+  });
 
-  if (doughnutInstance) doughnutInstance.destroy()
+  if (doughnutInstance) doughnutInstance.destroy();
   doughnutInstance = new Chart(doughnutChart.value, {
     type: 'doughnut',
     data: {
@@ -1348,16 +1401,14 @@ async function cargarDashboard() {
                   const value = dataset.data[i];
                   const total = dataset.data.reduce((a, b) => a + b, 0);
                   const percentage = ((value / total) * 100).toFixed(1);
-                  
                   // Emojis para cada estado
                   const emojis = {
-                    'OPEN': '🔵',
-                    'CLOSED': '✅', 
+                    'OPEN': '-',
+                    'CLOSED': '-', 
                     'PENDING': '⏳',
                     'ASSIGNED': '👤',
                     'UNASSIGNED': '❓'
                   };
-                  
                   return {
                     text: `${emojis[label] || '📊'} ${label}: ${value} (${percentage}%)`,
                     fillStyle: dataset.backgroundColor[i],
@@ -1426,7 +1477,7 @@ async function cargarDashboard() {
       },
     },
     plugins: [ChartDataLabels, centerText]
-  })
+  });
 }
 
 
